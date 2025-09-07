@@ -1,0 +1,62 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Try Case",
+  "version": "0.1.0",
+  "identifier": "com.xiaoqiujun.trycase-app",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+		"windows": [
+			{
+        "title": "测试用例管理工具",
+				"width": 1200,
+				"height": 800,
+				"minWidth": 800,
+				"minHeight": 600,
+				"resizable": true,
+				"center": true,
+				"shadow": true
+			}
+		],
+		"security": {
+			"csp": null
+		},
+    "macOSPrivateApi": true
+	},
+  "bundle": {
+    "active": true,
+    "createUpdaterArtifacts":true,
+		"targets": "all",
+		"icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "publisher": "xiaoqiujun",
+    "category": "DeveloperTool",
+    "shortDescription": "一款轻量级、本地化、跨平台的 测试用例管理工具，基于 Tauri + React 打造",
+    "longDescription": "一款轻量级、本地化、跨平台的 测试用例管理工具，基于 Tauri + React 打造",
+    "copyright": "Copyright © 2025 xiaoqiujun. All rights reserved.",
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.15",
+      "signingIdentity": "-",
+      "providerShortName": null,
+      "entitlements": null,
+      "exceptionDomain": ""
+    },
+    "windows":{
+      "nsis":null
+    }
+  },
+  "plugins": {
+		"updater": {
+      "active": true,
+      "endpoints": [
+        "https://github.com/xiaoqiujun/trycase-app/releases/latest/download/latest.json"
+      ],
+      "dialog": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDRBODk0RTQ2M0YxRTY3MDkKUldRSlp4NC9SazZKU2tJUjdrWVZSdm0ybWZUUTZZMmtobzNYRHhzbjh6bkxuMVR5RkpzSDhTTHIK"
+    }
+	}
+}

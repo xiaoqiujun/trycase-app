@@ -1,0 +1,205 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  APP_NAME: "Try Case"
+  APP_VERSION: ${{ github.ref_name }}
+
+jobs:
+  # 1. 创建 Release
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create.outputs.upload_url }}
+      release_id: ${{ steps.create.outputs.id }}
+    steps:
+      - name: Set Env
+        run: |
+          TAG_VERSION=${{ github.ref_name }}
+          echo "当前版本: $TAG_VERSION"
+          CLEAN_VERSION=${TAG_VERSION#v}
+          echo "VERSION=$CLEAN_VERSION" >> $GITHUB_ENV
+        shell: bash
+
+      - uses: actions/checkout@v4
+
+      - name: Generate release notes and release.txt
+        id: release_notes
+        run: |
+          # 提取版本信息
+          VERSION=${{ github.ref_name }}
+          CLEAN_VERSION=${{ env.VERSION }}
+          DOWNLOAD_BASE_URL="https://github.com/${{ github.repository }}/releases/download/$VERSION"
+          
+          # 生成release.txt
+          cat > release.txt <<EOF
+          ==================
+
+          ### Windows
+          - [x86_64]($DOWNLOAD_BASE_URL/$APP_NAME-$CLEAN_VERSION-x86_64.exe)
+          - [ARM64]($DOWNLOAD_BASE_URL/$APP_NAME-$CLEAN_VERSION-arm64.exe)
+          
+          ### macOS
+          - [x86_64 (Intel)]($DOWNLOAD_BASE_URL/$APP_NAME-$CLEAN_VERSION-x86_64.dmg)
+          - [aarch64 (Apple Silicon)]($DOWNLOAD_BASE_URL/$APP_NAME-$CLEAN_VERSION-aarch64.dmg)
+          
+          ### Linux
+          - [x86_64]($DOWNLOAD_BASE_URL/$APP_NAME-$CLEAN_VERSION-x86_64.deb)
+          - [ARM64]($DOWNLOAD_BASE_URL/$APP_NAME-$CLEAN_VERSION-arm64.deb)
+          EOF
+          
+          # 生成发布说明（包含变更日志）
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          # 获取当前标签与上一个标签之间的提交记录
+          git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "## Download Links" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          cat release.txt | grep -v "==================" >> $GITHUB_ENV  # 避免重复标题线
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Create GitHub Release
+        id: create
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Try Case ${{ env.VERSION }}"
+          body: ${{ env.RELEASE_NOTES }}
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: false
+          files: |
+            release.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 2. 多平台构建
+  build:
+    needs: create-release
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows 平台
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            platform_key: windows-x86_64
+            filename_suffix: x86_64.exe
+            package_type: exe
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            platform_key: windows-aarch64
+            filename_suffix: arm64.exe
+            package_type: exe
+
+          # macOS 平台
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            platform_key: darwin-aarch64
+            filename_suffix: aarch64.dmg
+            package_type: dmg
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            platform_key: darwin-x86_64
+            filename_suffix: x86_64.dmg
+            package_type: dmg
+
+          # Linux DEB 包
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            platform_key: linux-x86_64
+            filename_suffix: x86_64.deb
+            package_type: deb
+
+          # Linux RPM 包
+          # - os: ubuntu-22.04
+          #   target: x86_64-unknown-linux-gnu
+          #   platform_key: linux-x86_64
+          #   filename_suffix: x86_64.rpm
+          #   package_type: rpm
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      # 检出代码
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 安装 Rust 稳定版本
+      - name: Install Rust Stable
+        uses: dtolnay/rust-toolchain@stable
+
+      # 添加 Rust 目标架构
+      - name: Add Rust Target
+        run: rustup target add ${{ matrix.target }}
+
+      # 配置 Rust 缓存
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          save-if: false
+      
+      # 安装依赖（仅在 Ubuntu 上）
+      - name: Install dependencies (ubuntu only)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxslt1.1 libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+          
+      # 安装 x86 OpenSSL (macOS only)
+      - name: Install x86 OpenSSL (macOS only)
+        if: matrix.target == 'x86_64-apple-darwin'
+        run: |
+          arch -x86_64 brew install openssl@3
+          echo "OPENSSL_DIR=$(brew --prefix openssl@3)" >> $GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=$(brew --prefix openssl@3)/include" >> $GITHUB_ENV
+          echo "OPENSSL_LIB_DIR=$(brew --prefix openssl@3)/lib" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$(brew --prefix openssl@3)/lib/pkgconfig" >> $GITHUB_ENV
+      
+      # 安装 Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          
+      # 安装 pnpm
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          
+      # 安装依赖
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm list
+        env:
+          NODE_OPTIONS: "--max_old_space_size=4096"
+
+      # 构建 Tauri 应用
+      - name: Tauri build
+        id: tauri_build
+        uses: tauri-apps/tauri-action@v0
+        env:
+          NODE_OPTIONS: "--max_old_space_size=4096"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 配置 Tauri 签名密钥
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          # 配置 Tauri 签名密钥密码
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Try Case ${{ env.VERSION }}'
+          releaseBody: 'See the assets to download this version and install.'
+          prerelease: false
+          releaseDraft: false
+          includeUpdaterJson: true
+          args: --target ${{ matrix.target }}
