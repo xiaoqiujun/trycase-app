@@ -1,13 +1,14 @@
 import { useEffect, useState, useRef } from "react"
 import { saveAs } from "file-saver"
 import * as XLSX from "xlsx"
+import ExcelJS from "exceljs"
 import mermaid from "mermaid"
 import { Workbook, RootTopic, Topic } from "xmind-generator"
 import domtoimage from "dom-to-image"
 import { confirmDialog } from "./utils/dialog"
 import { storage } from "./utils/storage"
 import { logger } from "./utils/logger"
-import {version} from '../package.json'
+import { version } from "../package.json"
 
 type Branch = { condition: string; nextStep: number }
 type Step = {
@@ -211,7 +212,7 @@ export default function TestCaseAdvancedPage() {
 				const saved = await storage.get(STORAGE_KEY)
 				setCases(JSON.parse(saved || "[]"))
 			} catch (e) {
-				logger.error(`加载用例失败:${ String(e)}`)
+				logger.error(`加载用例失败:${String(e)}`)
 			}
 		}
 		loadCases()
@@ -281,23 +282,76 @@ export default function TestCaseAdvancedPage() {
 	}
 
 	// ==== 导出功能 ====
-	const exportExcel = () => {
-		const rows = cases.map((c) => ({
-			ID: c.id,
-			标题: c.title,
-			前置条件: c.precondition,
-			步骤: c.steps
-				.map((s, idx) => {
-					const branchStr =
-						s.branches?.map((b) => `[${b.condition} -> 步骤 ${b.nextStep + 1}]`).join(", ") || ""
-					return `步骤 ${idx + 1}: ${s.action} | ${s.expectedStatus} | ${s.expectedValue} ${branchStr}`
-				})
-				.join("\n"),
-		}))
-		const sheet = XLSX.utils.json_to_sheet(rows)
-		const wb = XLSX.utils.book_new()
-		XLSX.utils.book_append_sheet(wb, sheet, "TestCases")
-		XLSX.writeFile(wb, "testcases.xlsx")
+	const exportExcel = async () => {
+		const workbook = new ExcelJS.Workbook()
+		const worksheet = workbook.addWorksheet("TestCases")
+
+		worksheet.columns = [
+			{ header: "ID", key: "id", width: 18 },
+			{ header: "标题", key: "title", width: 30 },
+			{ header: "前置条件", key: "pre", width: 40 },
+			{ header: "步骤", key: "steps", width: 80 },
+		]
+
+		// 表头加粗
+		worksheet.getRow(1).font = { bold: true }
+
+		cases.forEach((c) => {
+			// 行对象
+			const row = worksheet.addRow({
+				id: c.id,
+				title: c.title,
+				pre: c.precondition,
+			})
+
+			// === 步骤列（要处理彩色状态） ===
+			const stepsCell = row.getCell("steps")
+			stepsCell.value = {
+				richText: c.steps
+					.map((s, idx) => {
+						let color = "FF9900" // 默认橙色
+						if (s.expectedStatus === "成功") color = "00AA00"
+						else if (s.expectedStatus === "失败") color = "CC0000"
+
+						const branchStr =
+							s.branches?.map((b) => `[${b.condition} -> 步骤 ${b.nextStep + 1}]`).join(", ") || ""
+
+						return [
+							{
+								text: `步骤 ${idx + 1}: ${s.action} | `,
+								font: { color: { argb: "000000" } }, // 普通黑色
+							},
+							{
+								text: `${s.expectedStatus}`, // 状态
+								font: { color: { argb: color }, bold: true },
+							},
+							{
+								text: ` | ${s.expectedValue} ${branchStr}\n`,
+								font: { color: { argb: "000000" } },
+							},
+						]
+					})
+					.flat(),
+			}
+
+			// 设置单元格样式（左上对齐 + 自动换行）
+			stepsCell.alignment = { wrapText: true, vertical: "top", horizontal: "left" }
+
+			// 动态行高（按换行数估算）
+			const stepLines = c.steps.length
+			row.height = Math.max(35, stepLines * 35)
+
+			// 其他列也左上对齐
+			row.eachCell((cell, colNum) => {
+				if (colNum !== 4) {
+					// 除了步骤列
+					cell.alignment = { wrapText: true, vertical: "top", horizontal: "left" }
+				}
+			})
+		})
+
+		const buffer = await workbook.xlsx.writeBuffer()
+		saveAs(new Blob([buffer]), "testcases.xlsx")
 	}
 
 	const exportXMind = async () => {

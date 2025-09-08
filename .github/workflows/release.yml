@@ -6,7 +6,7 @@ on:
       - 'v*.*.*'
 
 env:
-  APP_NAME: "Try Case"
+  APP_NAME: "Try.Case"
   APP_VERSION: ${{ github.ref_name }}
 
 jobs:
