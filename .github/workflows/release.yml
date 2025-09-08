@@ -5,6 +5,7 @@ on:
     tags:
       - 'v*.*.*'
 
+permissions: write-all
 env:
   APP_NAME: "Try.Case"
   APP_VERSION: ${{ github.ref_name }}
@@ -40,16 +41,16 @@ jobs:
           ==================
 
           ### Windows
-          - [x86_64]($DOWNLOAD_BASE_URL/$APP_NAME-$CLEAN_VERSION-x86_64.exe)
-          - [ARM64]($DOWNLOAD_BASE_URL/$APP_NAME-$CLEAN_VERSION-arm64.exe)
+          - [x86_64]($DOWNLOAD_BASE_URL/$APP_NAME_$CLEAN_VERSION_x64-setup.exe)
+          - [ARM64]($DOWNLOAD_BASE_URL/$APP_NAME_$CLEAN_VERSION_arm64-setup.exe)
           
           ### macOS
           - [x86_64 (Intel)]($DOWNLOAD_BASE_URL/$APP_NAME-$CLEAN_VERSION-x86_64.dmg)
-          - [aarch64 (Apple Silicon)]($DOWNLOAD_BASE_URL/$APP_NAME-$CLEAN_VERSION-aarch64.dmg)
+          - [aarch64 (Apple Silicon)]($DOWNLOAD_BASE_URL/$APP_NAME_$CLEAN_VERSION_aarch64.dmg)
           
           ### Linux
-          - [x86_64]($DOWNLOAD_BASE_URL/$APP_NAME-$CLEAN_VERSION-x86_64.deb)
-          - [ARM64]($DOWNLOAD_BASE_URL/$APP_NAME-$CLEAN_VERSION-arm64.deb)
+          - [x86_64]($DOWNLOAD_BASE_URL/$APP_NAME-$CLEAN_VERSION-1.x86_64.rpm)
+          - [ARM64]($DOWNLOAD_BASE_URL/$APP_NAME_$CLEAN_VERSION_arm64.deb)
           EOF
           
           # 生成发布说明（包含变更日志）

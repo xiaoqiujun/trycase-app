@@ -21,7 +21,7 @@
 	"app": {
 		"windows": [
 			{
-				"title": "测试用例管理工具",
+				"title": "Try Case",
 				"width": 1200,
 				"height": 800,
 				"minWidth": 1200,
