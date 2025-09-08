@@ -41,16 +41,16 @@ jobs:
           ==================
 
           ### Windows
-          - [x86_64]($DOWNLOAD_BASE_URL/$APP_NAME_$CLEAN_VERSION_x64-setup.exe)
-          - [ARM64]($DOWNLOAD_BASE_URL/$APP_NAME_$CLEAN_VERSION_arm64-setup.exe)
+          - [x86_64]($DOWNLOAD_BASE_URL/Try.Case_${{ env.VERSION }}_x64-setup.exe)
+          - [ARM64]($DOWNLOAD_BASE_URL/Try.Case_${{ env.VERSION }}_arm64-setup.exe)
           
           ### macOS
-          - [x86_64 (Intel)]($DOWNLOAD_BASE_URL/$APP_NAME-$CLEAN_VERSION-x86_64.dmg)
-          - [aarch64 (Apple Silicon)]($DOWNLOAD_BASE_URL/$APP_NAME_$CLEAN_VERSION_aarch64.dmg)
+          - [x86_64 (Intel)]($DOWNLOAD_BASE_URL/Try.Case_${{ env.VERSION }}_x64.dmg)
+          - [aarch64 (Apple Silicon)]($DOWNLOAD_BASE_URL/Try.Case_${{ env.VERSION }}_aarch64.dmg)
           
           ### Linux
-          - [x86_64]($DOWNLOAD_BASE_URL/$APP_NAME-$CLEAN_VERSION-1.x86_64.rpm)
-          - [ARM64]($DOWNLOAD_BASE_URL/$APP_NAME_$CLEAN_VERSION_arm64.deb)
+          - [x86_64 RPM包(Redhat系)]($DOWNLOAD_BASE_URL/Try.Case-${{ env.VERSION }}-1.x86_64.rpm)
+          - [ARM64 DEB包(Debian系)]($DOWNLOAD_BASE_URL/Try.Case_${{ env.VERSION }}_arm64.deb)
           EOF
           
           # 生成发布说明（包含变更日志）
