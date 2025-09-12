@@ -16,6 +16,7 @@
     "release": "node scripts/prepare-release.js"
   },
   "dependencies": {
+    "@radix-ui/react-context-menu": "^2.2.16",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tabler/icons-react": "^3.34.1",
     "@tauri-apps/api": "^2",
@@ -32,7 +33,10 @@
     "lucide-react": "^0.542.0",
     "mermaid": "^11.11.0",
     "react": "^19.1.0",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^19.1.0",
+    "reactflow": "^11.11.4",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
     "xlsx": "^0.18.5",

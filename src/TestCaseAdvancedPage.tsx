@@ -25,38 +25,49 @@ const STORAGE_KEY = "testcases_advanced"
 // ===================== Flowchart Mermaid =====================
 const generateMermaid = (c: TestCase) => {
 	let code = "flowchart TD\n"
+	let branchCounter = 0
 
-	c.steps.forEach((s, idx) => {
-		const expectedValue = s.expectedValue || "无"
-		code += `S${idx}["S${idx + 1}: ${s.action} | ${s.expectedStatus} | ${expectedValue}"]\n`
-	})
+	try {
+		// 生成步骤节点
+		c.steps.forEach((s, idx) => {
+			const expectedValue = s.expectedValue || "无"
+			// 节点内部可以保留 | 分隔，用于视觉区分
+			code += `S${idx}["S${idx + 1}: ${s.action} | ${s.expectedStatus} | ${expectedValue}"]\n`
+		})
 
-	// 顺序/回溯
-	c.steps.forEach((s, idx) => {
-		if (s.dependsOn !== undefined) {
-			code += `S${idx} -.-> S${s.dependsOn}\n` // 回溯用虚线
-		} else if (idx < c.steps.length - 1) {
-			code += `S${idx} --> S${idx + 1}\n`
-		}
-	})
+		// 生成条件分支及顺序/回溯
+		c.steps.forEach((s, idx) => {
+			// 条件分支
+			if (s.branches && s.branches.length > 0) {
+				const branchNode = `D${branchCounter++}{条件分支}`
+				code += `${branchNode}\n`
+				code += `S${idx} --> ${branchNode}\n`
+				s.branches.forEach((b) => {
+					const nextStep = c.steps[b.nextStep]
+					// label 内部不要使用 |，改用换行 \n
+					const label = `${b.condition}: ${nextStep.action}\n状态: ${nextStep.expectedStatus}\n期望值: ${nextStep.expectedValue}`
+					code += `${branchNode} -->|${label}| S${b.nextStep}\n`
+				})
+			} else if (idx < c.steps.length - 1) {
+				// 顺序箭头（无分支时）
+				// code += `S${idx} --> S${idx + 1}\n`
+			}
 
-	// 条件分支
-	c.steps.forEach((s, idx) => {
-		if (s.branches && s.branches.length > 0) {
-			const branchNode = `D${idx}{条件分支}`
-			code += `${branchNode}\nS${idx} --> ${branchNode}\n`
-			s.branches.forEach((b) => {
-				code += `${branchNode} -->|${b.condition}| S${b.nextStep}\n`
-			})
-		}
-	})
+			// 回溯箭头
+			if (s.dependsOn !== undefined) {
+				const dependStep = c.steps[s.dependsOn]
+				const label = `回溯: ${dependStep.action}\n状态: ${dependStep.expectedStatus}\n期望值: ${dependStep.expectedValue}`
+				code += `S${idx} -.-> S${s.dependsOn}["${label}"]\n`
+			}
+		})
 
-	// 节点颜色
-	c.steps.forEach((s, idx) => {
-		code += `class S${idx} ${
-			s.expectedStatus === "成功" ? "success" : s.expectedStatus === "失败" ? "fail" : "exception"
-		}\n`
-	})
+		// 节点颜色
+		c.steps.forEach((s, idx) => {
+			code += `class S${idx} ${
+				s.expectedStatus === "成功" ? "success" : s.expectedStatus === "失败" ? "fail" : "exception"
+			}\n`
+		})
+	} catch (error) {}
 
 	code += `
 classDef success fill:#dcfce7,stroke:#22c55e,color:#166534
@@ -446,71 +457,114 @@ ${
 	const importDemo = () => {
 		const demoCases: TestCase[] = [
 			{
-				id: "TC-LOGIN-001",
-				title: "用户使用正确账号密码登录系统",
-				precondition:
-					"1. 系统已部署并正常运行\n2. 测试用户已注册（账号：test@example.com，密码：Test123456）\n3. 用户处于未登录状态",
+				id: "TC-ECOM-001",
+				title: "用户在电商平台完成注册、登录并购买商品",
+				precondition: "系统已部署并正常运行，用户处于未登录状态",
 				steps: [
 					{
-						action: "访问系统登录页面",
+						action: "用户访问注册页面并输入有效的账号、密码和邮箱",
 						expectedStatus: "成功",
-						expectedValue: "登录页面正常显示，包含账号输入框、密码输入框、登录按钮",
-						branches: [],
-					},
-					{
-						action: "在账号输入框中输入'test@example.com'",
-						expectedStatus: "成功",
-						expectedValue: "输入框内容正确显示为'test@example.com'",
-						branches: [],
-					},
-					{
-						action: "在密码输入框中输入'Test123456'",
-						expectedStatus: "成功",
-						expectedValue: "输入框显示为加密字符（如******）",
-						branches: [],
-					},
-					{
-						action: "点击登录按钮",
-						expectedStatus: "成功",
-						expectedValue: "系统验证通过，跳转到首页",
+						expectedValue: "注册成功，跳转到登录页面",
 						branches: [
 							{
-								condition: "账号或密码错误",
+								condition: "账号已存在",
+								nextStep: 1,
+							},
+							{
+								condition: "邮箱格式错误",
+								nextStep: 2,
+							},
+						],
+					},
+					{
+						action: "系统提示账号已存在",
+						expectedStatus: "失败",
+						expectedValue: "注册失败，停留在注册页面",
+						branches: [],
+						dependsOn: 0,
+					},
+					{
+						action: "系统提示邮箱格式错误",
+						expectedStatus: "失败",
+						expectedValue: "注册失败，停留在注册页面",
+						branches: [],
+						dependsOn: 0,
+					},
+					{
+						action: "用户访问登录页面并输入注册的账号与密码",
+						expectedStatus: "成功",
+						expectedValue: "登录成功，跳转到首页",
+						branches: [
+							{
+								condition: "密码错误",
 								nextStep: 4,
 							},
-							{
-								condition: "需要验证码",
-								nextStep: 5,
-							},
 						],
 					},
 					{
-						action: "系统显示错误提示'账号或密码错误'",
+						action: "系统提示密码错误",
 						expectedStatus: "失败",
-						expectedValue: "错误提示正确显示，登录状态未改变",
+						expectedValue: "登录失败，停留在登录页面",
 						branches: [],
 					},
 					{
-						action: "输入正确的验证码并点击确认",
+						action: "用户在首页浏览商品，选择商品并进入商品详情页",
 						expectedStatus: "成功",
-						expectedValue: "验证码验证通过，跳转到首页",
+						expectedValue: "显示商品详情，包含价格、库存、规格等信息",
+						branches: [],
+					},
+					{
+						action: "用户点击“加入购物车”按钮",
+						expectedStatus: "成功",
+						expectedValue: "商品加入购物车，购物车数量更新",
 						branches: [
 							{
-								condition: "验证码错误",
-								nextStep: 6,
+								condition: "库存不足",
+								nextStep: 7,
 							},
 						],
 					},
 					{
-						action: "系统显示错误提示'验证码错误，请重新输入'",
+						action: "系统提示库存不足",
 						expectedStatus: "失败",
-						expectedValue: "错误提示正确显示，保持在验证码输入界面",
+						expectedValue: "无法加入购物车，停留在商品详情页",
 						branches: [],
 						dependsOn: 5,
+					},
+					{
+						action: "用户进入购物车并点击“去结算”",
+						expectedStatus: "成功",
+						expectedValue: "进入订单确认页面，显示商品清单和总价",
+						branches: [],
+					},
+					{
+						action: "用户确认订单并提交",
+						expectedStatus: "成功",
+						expectedValue: "生成订单，进入支付页面",
+						branches: [
+							{
+								condition: "余额不足",
+								nextStep: 10,
+							},
+						],
+					},
+					{
+						action: "系统提示余额不足",
+						expectedStatus: "失败",
+						expectedValue: "支付失败，停留在支付页面",
+						branches: [],
+						dependsOn: 9,
+					},
+					{
+						action: "用户完成支付（如使用支付宝/微信/银行卡）",
+						expectedStatus: "成功",
+						expectedValue: "支付成功，跳转到订单成功页面",
+						branches: [],
 					},
 				],
 			},
 		]
+
 		setCases(demoCases)
 	}
 
