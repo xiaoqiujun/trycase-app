@@ -2,7 +2,7 @@
   "name": "trycase-app",
   "description": "一款轻量级、本地化、跨平台的测试用例管理工具，基于 Tauri + React 打造",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "xiaoqiujun <kdevelop98@gmail.com>",
   "type": "module",
   "scripts": {
